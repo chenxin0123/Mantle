@@ -1,4 +1,4 @@
-//
+//!
 //  NSError+MTLModelException.h
 //  Mantle
 //

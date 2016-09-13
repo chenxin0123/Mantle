@@ -25,7 +25,7 @@
 @implementation MTLValueTransformer
 
 #pragma mark Lifecycle
-
+///实际上是返回MTLReversibleValueTransformer实例
 + (instancetype)transformerUsingForwardBlock:(MTLValueTransformerBlock)forwardBlock {
 	return [[self alloc] initWithForwardBlock:forwardBlock reverseBlock:nil];
 }

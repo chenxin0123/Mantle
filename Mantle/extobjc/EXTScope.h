@@ -1,4 +1,4 @@
-//
+//!
 //  EXTScope.h
 //  extobjc
 //

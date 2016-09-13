@@ -1,4 +1,4 @@
-//
+//！
 //  EXTRuntimeExtensions.h
 //  extobjc
 //
@@ -109,5 +109,6 @@ typedef struct {
  * Returns a pointer to a structure containing information about \a property.
  * You must \c free() the returned pointer. Returns \c NULL if there is an error
  * obtaining information from \a property.
+ * 解析property 创建一个mtl_propertyAttributes
  */
 mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property);

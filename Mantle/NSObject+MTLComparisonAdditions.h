@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+MTLComparisonAdditions.h
 //  Mantle
 //

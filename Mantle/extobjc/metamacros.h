@@ -1,4 +1,4 @@
-/**
+/**!
  * Macros for metaprogramming
  * ExtendedC
  *

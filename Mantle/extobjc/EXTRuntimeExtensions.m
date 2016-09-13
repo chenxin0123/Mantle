@@ -11,6 +11,7 @@
 
 #import <Foundation/Foundation.h>
 
+///参考https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtPropertyIntrospection.html#//apple_ref/doc/uid/TP40008048-CH101-SW5
 mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property) {
     const char * const attrString = property_getAttributes(property);
     if (!attrString) {
@@ -47,7 +48,7 @@ mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property) {
     strncpy(attributes->type, typeString, typeLength);
     attributes->type[typeLength] = '\0';
 
-    // if this is an object type, and immediately followed by a quoted string...
+    // if this is an object type, and immediately followed by a quoted string... 类名
     if (typeString[0] == *(@encode(id)) && typeString[1] == '"') {
         // we should be able to extract a class name
         const char *className = typeString + 2;
@@ -74,7 +75,6 @@ mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property) {
         // skip past any junk before the first flag
         next = strchr(next, ',');
     }
-
     while (next && *next == ',') {
         char flag = next[1];
         next += 2;
@@ -101,7 +101,9 @@ mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property) {
 
         case 'G':
         case 'S':
-            {
+            {//自定义的getter setter名字
+				//@property(getter=isIntReadOnlyGetter, readonly) int intReadonlyGetter;
+				//Ti,R,GisIntReadOnlyGetter
                 const char *nextFlag = strchr(next, ',');
                 SEL name = NULL;
 
@@ -156,7 +158,7 @@ mtl_propertyAttributes *mtl_copyPropertyAttributes (objc_property_t property) {
             attributes->weak = YES;
             break;
 
-        case 'P':
+        case 'P'://The property is eligible for garbage collection.
             attributes->canBeCollected = YES;
             break;
 

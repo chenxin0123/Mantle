@@ -21,10 +21,13 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 
 + (void)load {
 	@autoreleasepool {
+		
+		//添加URLValueTransformer
 		MTLValueTransformer *URLValueTransformer = [MTLValueTransformer
 			transformerUsingForwardBlock:^ id (NSString *str, BOOL *success, NSError **error) {
 				if (str == nil) return nil;
 
+				//不是NSString
 				if (![str isKindOfClass:NSString.class]) {
 					if (error != NULL) {
 						NSDictionary *userInfo = @{
@@ -40,7 +43,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 				}
 
 				NSURL *result = [NSURL URLWithString:str];
-
+				//转换失败
 				if (result == nil) {
 					if (error != NULL) {
 						NSDictionary *userInfo = @{
@@ -60,6 +63,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 			reverseBlock:^ id (NSURL *URL, BOOL *success, NSError **error) {
 				if (URL == nil) return nil;
 
+				//不是URL
 				if (![URL isKindOfClass:NSURL.class]) {
 					if (error != NULL) {
 						NSDictionary *userInfo = @{
@@ -77,7 +81,9 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 			}];
 
 		[NSValueTransformer setValueTransformer:URLValueTransformer forName:MTLURLValueTransformerName];
-
+		
+		
+		//添加MTLValueTransformer
 		MTLValueTransformer *UUIDValueTransformer = [MTLValueTransformer
 				transformerUsingForwardBlock:^id(NSString *string, BOOL *success, NSError **error) {
 					if (string == nil) return nil;
@@ -159,7 +165,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_arrayMappingTransformerWithTransformer:(NSValueTransformer *)transformer {
 	NSParameterAssert(transformer != nil);
-	
+	//将transformer应用到数组中每个元素 一旦有error的直接返回nil 若转换的结果为nil则无视
 	id (^forwardBlock)(NSArray *values, BOOL *success, NSError **error) = ^ id (NSArray *values, BOOL *success, NSError **error) {
 		if (values == nil) return nil;
 		
@@ -282,6 +288,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	}
 }
 
+///
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_validatingTransformerForClass:(Class)modelClass {
 	NSParameterAssert(modelClass != nil);
 
@@ -304,6 +311,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	}];
 }
 
+///提供一个key返回value  提供一个value返回一个key key和value都要唯一 如果结果为空则返回默认值
 + (NSValueTransformer *)mtl_valueMappingTransformerWithDictionary:(NSDictionary *)dictionary defaultValue:(id)defaultValue reverseDefaultValue:(id)reverseDefaultValue {
 	NSParameterAssert(dictionary != nil);
 	NSParameterAssert(dictionary.count == [[NSSet setWithArray:dictionary.allValues] count]);
@@ -329,6 +337,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	return [self mtl_valueMappingTransformerWithDictionary:dictionary defaultValue:nil reverseDefaultValue:nil];
 }
 
+///字符串转date 可逆
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_dateTransformerWithDateFormat:(NSString *)dateFormat calendar:(NSCalendar *)calendar locale:(NSLocale *)locale timeZone:(NSTimeZone *)timeZone defaultDate:(NSDate *)defaultDate {
 	NSParameterAssert(dateFormat.length);
 
@@ -347,6 +356,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	return [self mtl_dateTransformerWithDateFormat:dateFormat calendar:nil locale:locale timeZone:nil defaultDate:nil];
 }
 
+///根据numberStyle 将字符串作为NSNumber 可逆
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_numberTransformerWithNumberStyle:(NSNumberFormatterStyle)numberStyle locale:(NSLocale *)locale {
 	NSNumberFormatter *numberFormatter = [[NSNumberFormatter alloc] init];
 	numberFormatter.numberStyle = numberStyle;
@@ -355,6 +365,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	return [self mtl_transformerWithFormatter:numberFormatter forObjectClass:NSNumber.class];
 }
 
+///用formatter将字符串转换为objectClass实例或者将objectClass实例转为字符串
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_transformerWithFormatter:(NSFormatter *)formatter forObjectClass:(Class)objectClass {
 	NSParameterAssert(formatter != nil);
 	NSParameterAssert(objectClass != nil);

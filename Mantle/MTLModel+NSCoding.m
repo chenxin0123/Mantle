@@ -41,6 +41,7 @@ static NSSet *encodablePropertyKeysForClass(Class modelClass) {
 
 // Verifies that all of the specified class' encodable property keys are present
 // in +allowedSecureCodingClassesByPropertyKey, and throws an exception if not.
+///确认所有的allowedSecureCodingClassesByPropertyKey都在encodablePropertyKeysForClass里
 static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 	NSDictionary *allowedClasses = [modelClass allowedSecureCodingClassesByPropertyKey];
 
@@ -62,6 +63,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 
 #pragma mark Encoding Behaviors
 
+///返回encode的方式 weak使用MTLModelEncodingBehaviorConditional 其他使用MTLModelEncodingBehaviorUnconditional
 + (NSDictionary *)encodingBehaviorsByPropertyKey {
 	NSSet *propertyKeys = self.propertyKeys;
 	NSMutableDictionary *behaviors = [[NSMutableDictionary alloc] initWithCapacity:propertyKeys.count];
@@ -82,6 +84,8 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 	return behaviors;
 }
 
+///获取所有属性的encodingBehaviors 排除掉MTLModelEncodingBehaviorExcluded
+///再遍历剩余的 返回字典[propertyName:Class] 默认NSValue
 + (NSDictionary *)allowedSecureCodingClassesByPropertyKey {
 	NSDictionary *cachedClasses = objc_getAssociatedObject(self, MTLModelCachedAllowedClassesKey);
 	if (cachedClasses != nil) return cachedClasses;

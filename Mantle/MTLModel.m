@@ -150,6 +150,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 
 #pragma mark Reflection
 
+///往上遍历superclass直到MTLModel 得到所有属性 调用block
 + (void)enumeratePropertiesUsingBlock:(void (^)(objc_property_t property, BOOL *stop))block {
 	Class cls = self;
 	BOOL stop = NO;
@@ -172,6 +173,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	}
 }
 
+///返回所有的属性keys并缓存
 + (NSSet *)propertyKeys {
 	NSSet *cachedKeys = objc_getAssociatedObject(self, MTLModelCachedPropertyKeysKey);
 	if (cachedKeys != nil) return cachedKeys;
@@ -221,6 +223,8 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	return [self dictionaryWithValuesForKeys:keys.allObjects];
 }
 
+
+///无ivar的readonly属性返回MTLPropertyStorageNone 其他返回MTLPropertyStoragePermanent
 + (MTLPropertyStorage)storageBehaviorForPropertyWithKey:(NSString *)propertyKey {
 	objc_property_t property = class_getProperty(self.class, propertyKey.UTF8String);
 

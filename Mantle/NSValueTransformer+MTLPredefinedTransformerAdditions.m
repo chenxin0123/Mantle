@@ -288,7 +288,7 @@ NSString * const MTLBooleanValueTransformerName = @"MTLBooleanValueTransformerNa
 	}
 }
 
-///
+///验证一个value isKindOfClass:modelClass value -> value|error
 + (NSValueTransformer<MTLTransformerErrorHandling> *)mtl_validatingTransformerForClass:(Class)modelClass {
 	NSParameterAssert(modelClass != nil);
 

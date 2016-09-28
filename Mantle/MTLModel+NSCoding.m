@@ -18,6 +18,7 @@ static NSString * const MTLModelVersionKey = @"MTLModelVersion";
 static void *MTLModelCachedAllowedClassesKey = &MTLModelCachedAllowedClassesKey;
 
 // Returns whether the given NSCoder requires secure coding.
+///是否需要SecureCoding
 static BOOL coderRequiresSecureCoding(NSCoder *coder) {
 	SEL requiresSecureCodingSelector = @selector(requiresSecureCoding);
 
@@ -33,6 +34,7 @@ static BOOL coderRequiresSecureCoding(NSCoder *coder) {
 
 // Returns all of the given class' encodable property keys (those that will not
 // be excluded from archives).
+///所有可以归档的属性
 static NSSet *encodablePropertyKeysForClass(Class modelClass) {
 	return [[modelClass encodingBehaviorsByPropertyKey] keysOfEntriesPassingTest:^ BOOL (NSString *propertyKey, NSNumber *behavior, BOOL *stop) {
 		return behavior.unsignedIntegerValue != MTLModelEncodingBehaviorExcluded;
@@ -85,7 +87,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 }
 
 ///获取所有属性的encodingBehaviors 排除掉MTLModelEncodingBehaviorExcluded
-///再遍历剩余的 返回字典[propertyName:Class] 默认NSValue
+///再遍历剩余的 返回字典[propertyName:Class] 默认NSValue.class
 + (NSDictionary *)allowedSecureCodingClassesByPropertyKey {
 	NSDictionary *cachedClasses = objc_getAssociatedObject(self, MTLModelCachedAllowedClassesKey);
 	if (cachedClasses != nil) return cachedClasses;
@@ -126,11 +128,14 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 	return allowedClasses;
 }
 
+///decode
 - (id)decodeValueForKey:(NSString *)key withCoder:(NSCoder *)coder modelVersion:(NSUInteger)modelVersion {
 	NSParameterAssert(key != nil);
 	NSParameterAssert(coder != nil);
 
+	///如果有单独的decode方法 则使用该方法
 	SEL selector = MTLSelectorWithCapitalizedKeyPattern("decode", key, "WithCoder:modelVersion:");
+	
 	if ([self respondsToSelector:selector]) {
 		IMP imp = [self methodForSelector:selector];
 		id (*function)(id, SEL, NSCoder *, NSUInteger) = (__typeof__(function))imp;
@@ -146,6 +151,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 			
 			return [coder decodeObjectOfClasses:[NSSet setWithArray:allowedClasses] forKey:key];
 		} else {
+
 			return [coder decodeObjectForKey:key];
 		}
 	} @catch (NSException *ex) {
@@ -159,6 +165,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 - (instancetype)initWithCoder:(NSCoder *)coder {
 	BOOL requiresSecureCoding = coderRequiresSecureCoding(coder);
 	NSNumber *version = nil;
+	//版本号
 	if (requiresSecureCoding) {
 		version = [coder decodeObjectOfClass:NSNumber.class forKey:MTLModelVersionKey];
 	} else {
@@ -194,6 +201,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 	NSSet *propertyKeys = self.class.propertyKeys;
 	NSMutableDictionary *dictionaryValue = [[NSMutableDictionary alloc] initWithCapacity:propertyKeys.count];
 
+	//遍历所有keys 将值取出放入dictionaryValue
 	for (NSString *key in propertyKeys) {
 		id value = [self decodeValueForKey:key withCoder:coder modelVersion:version.unsignedIntegerValue];
 		if (value == nil) continue;
@@ -201,6 +209,7 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 		dictionaryValue[key] = value;
 	}
 
+	//用dictionaryValue来初始化
 	NSError *error = nil;
 	self = [self initWithDictionary:dictionaryValue error:&error];
 	if (self == nil) NSLog(@"*** Could not unarchive %@: %@", self.class, error);
@@ -211,9 +220,11 @@ static void verifyAllowedClassesByPropertyKey(Class modelClass) {
 - (void)encodeWithCoder:(NSCoder *)coder {
 	if (coderRequiresSecureCoding(coder)) verifyAllowedClassesByPropertyKey(self.class);
 
+	//model版本号
 	[coder encodeObject:@(self.class.modelVersion) forKey:MTLModelVersionKey];
 
 	NSDictionary *encodingBehaviors = self.class.encodingBehaviorsByPropertyKey;
+	//遍历所有的键值
 	[self.dictionaryValue enumerateKeysAndObjectsUsingBlock:^(NSString *key, id value, BOOL *stop) {
 		@try {
 			// Skip nil values.

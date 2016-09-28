@@ -38,7 +38,7 @@ static NSUInteger modelVersion = 1;
 }
 
 #pragma mark Versioning
-
+///用来做版本兼容用的
 + (void)setModelVersion:(NSUInteger)version {
 	modelVersion = version;
 }

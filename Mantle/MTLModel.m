@@ -38,6 +38,7 @@ static void *MTLModelCachedPermanentPropertyKeysKey = &MTLModelCachedPermanentPr
 //
 // Returns YES if `value` could be validated and set, or NO if an error
 // occurred.
+///验证以及设置值 默认的验证是返回YES 可以自己实现 validateValue:forKeyerror 方法
 static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUpdate, NSError **error) {
 	// Mark this as being autoreleased, because validateValue may return
 	// a new object to be stored in this variable (and we don't want ARC to
@@ -95,6 +96,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 
 #pragma mark Lifecycle
 
+///组装并缓存transitoryKeys 和 permanentKeys
 + (void)generateAndCacheStorageBehaviors {
 	NSMutableSet *transitoryKeys = [NSMutableSet set];
 	NSMutableSet *permanentKeys = [NSMutableSet set];
@@ -120,6 +122,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	objc_setAssociatedObject(self, MTLModelCachedPermanentPropertyKeysKey, permanentKeys, OBJC_ASSOCIATION_COPY);
 }
 
+///返回一个实例
 + (instancetype)modelWithDictionary:(NSDictionary *)dictionary error:(NSError **)error {
 	return [[self alloc] initWithDictionary:dictionary error:error];
 }
@@ -195,6 +198,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	return keys;
 }
 
+///字符串集合
 + (NSSet *)transitoryPropertyKeys {
 	NSSet *transitoryPropertyKeys = objc_getAssociatedObject(self, MTLModelCachedTransitoryPropertyKeysKey);
 
@@ -206,6 +210,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	return transitoryPropertyKeys;
 }
 
+///字符串集合
 + (NSSet *)permanentPropertyKeys {
 	NSSet *permanentPropertyKeys = objc_getAssociatedObject(self, MTLModelCachedPermanentPropertyKeysKey);
 
@@ -217,9 +222,10 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	return permanentPropertyKeys;
 }
 
+///以permanentPropertyKeys 和 transitoryPropertyKeys的并集为键 值为对应属性值
 - (NSDictionary *)dictionaryValue {
 	NSSet *keys = [self.class.transitoryPropertyKeys setByAddingObjectsFromSet:self.class.permanentPropertyKeys];
-
+	///对每个key 像self发送 valueForKey消息
 	return [self dictionaryWithValuesForKeys:keys.allObjects];
 }
 
@@ -254,6 +260,8 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 
 #pragma mark Merging
 
+///将model中的值赋给自己 model和self都含同一个key
+///如果子类实现了对应的mergeKeyFromModel:则调用该方法 否则setValue:forKey
 - (void)mergeValueForKey:(NSString *)key fromModel:(NSObject<MTLModel> *)model {
 	NSParameterAssert(key != nil);
 
@@ -271,6 +279,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	function(self, selector, model);
 }
 
+///遍历model中的属性 将同名属性的值赋给self
 - (void)mergeValuesForKeysFromModel:(id<MTLModel>)model {
 	NSSet *propertyKeys = model.class.propertyKeys;
 
@@ -283,6 +292,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 
 #pragma mark Validation
 
+///验证所有属性值 forceUpdate NO
 - (BOOL)validate:(NSError **)error {
 	for (NSString *key in self.class.propertyKeys) {
 		id value = [self valueForKey:key];
@@ -310,6 +320,7 @@ static BOOL MTLValidateAndSetValue(id obj, NSString *key, id value, BOOL forceUp
 	return [NSString stringWithFormat:@"<%@: %p> %@", self.class, self, permanentProperties];
 }
 
+///permanentPropertyKeys的值异或
 - (NSUInteger)hash {
 	NSUInteger value = 0;
 

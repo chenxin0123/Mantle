@@ -73,6 +73,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 #pragma mark Convenience methods
 
+///字典转换为model
 + (id)modelOfClass:(Class)modelClass fromJSONDictionary:(NSDictionary *)JSONDictionary error:(NSError **)error {
 	MTLJSONAdapter *adapter = [[self alloc] initWithModelClass:modelClass];
 
@@ -103,12 +104,15 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	return models;
 }
 
+
+///model实例转换为字典
 + (NSDictionary *)JSONDictionaryFromModel:(id<MTLJSONSerializing>)model error:(NSError **)error {
 	MTLJSONAdapter *adapter = [[self alloc] initWithModelClass:model.class];
 
 	return [adapter JSONDictionaryFromModel:model error:error];
 }
 
+///model数组到字典数组
 + (NSArray *)JSONArrayFromModels:(NSArray *)models error:(NSError **)error {
 	NSParameterAssert(models != nil);
 	NSParameterAssert([models isKindOfClass:NSArray.class]);
@@ -126,11 +130,16 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 #pragma mark Lifecycle
 
+
 - (id)init {
 	NSAssert(NO, @"%@ must be initialized with a model class", self.class);
 	return nil;
 }
 
+///必须用一个类来初始化
+///初始化的类必须实现MTLJSONSerializing协议
+///从modelClass获取JSONKeyPathsByPropertyKey propertyKeys 验证_JSONKeyPathsByPropertyKey
+///初始化_valueTransformersByPropertyKey
 - (id)initWithModelClass:(Class)modelClass {
 	NSParameterAssert(modelClass != nil);
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLJSONSerializing)]);
@@ -144,12 +153,16 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 	NSSet *propertyKeys = [self.modelClass propertyKeys];
 
+	///遍历_JSONKeyPathsByPropertyKey中的key
+	///验证mappedPropertyKey必须是propertyKeys中的元素
+	///验证所有的元素都必须是字符串
 	for (NSString *mappedPropertyKey in _JSONKeyPathsByPropertyKey) {
 		if (![propertyKeys containsObject:mappedPropertyKey]) {
 			NSAssert(NO, @"%@ is not a property of %@.", mappedPropertyKey, modelClass);
 			return nil;
 		}
 
+		///映射的键
 		id value = _JSONKeyPathsByPropertyKey[mappedPropertyKey];
 
 		if ([value isKindOfClass:NSArray.class]) {
@@ -165,6 +178,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 		}
 	}
 
+	
 	_valueTransformersByPropertyKey = [self.class valueTransformersForModelClass:modelClass];
 
 	_JSONAdaptersByModelClass = [NSMapTable strongToStrongObjectsMapTable];
@@ -173,31 +187,41 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 }
 
 #pragma mark Serialization
-
+///model实例到字典
+///调用JSONKeyPathsByPropertyKey中的对应transform来转换值 然后根据值路径放入数据
 - (NSDictionary *)JSONDictionaryFromModel:(id<MTLJSONSerializing>)model error:(NSError **)error {
 	NSParameterAssert(model != nil);
 	NSParameterAssert([model isKindOfClass:self.modelClass]);
 
+	//model可能是modelClass子类的实例
 	if (self.modelClass != model.class) {
 		MTLJSONAdapter *otherAdapter = [self JSONAdapterForModelClass:model.class error:error];
 
 		return [otherAdapter JSONDictionaryFromModel:model error:error];
 	}
 
+	
 	NSSet *propertyKeysToSerialize = [self serializablePropertyKeys:[NSSet setWithArray:self.JSONKeyPathsByPropertyKey.allKeys] forModel:model];
 
+	///先返回属性名称:值字典
 	NSDictionary *dictionaryValue = [model.dictionaryValue dictionaryWithValuesForKeys:propertyKeysToSerialize.allObjects];
+	
 	NSMutableDictionary *JSONDictionary = [[NSMutableDictionary alloc] initWithCapacity:dictionaryValue.count];
 
 	__block BOOL success = YES;
 	__block NSError *tmpError = nil;
 
+	///遍历所有dictionaryValue
 	[dictionaryValue enumerateKeysAndObjectsUsingBlock:^(NSString *propertyKey, id value, BOOL *stop) {
+		
 		id JSONKeyPaths = self.JSONKeyPathsByPropertyKey[propertyKey];
 
 		if (JSONKeyPaths == nil) return;
 
+		///取对应属性名的transformer
 		NSValueTransformer *transformer = self.valueTransformersByPropertyKey[propertyKey];
+		
+		///转换value
 		if ([transformer.class allowsReverseTransformation]) {
 			// Map NSNull -> nil for the transformer, and then back for the
 			// dictionaryValue we're going to insert into.
@@ -217,6 +241,8 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 			}
 		}
 
+		
+		///obj是字典 为字典创建中间路径的空字典
 		void (^createComponents)(id, NSString *) = ^(id obj, NSString *keyPath) {
 			NSArray *keyPathComponents = [keyPath componentsSeparatedByString:@"."];
 
@@ -256,7 +282,9 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	}
 }
 
+///字典转model
 - (id)modelFromJSONDictionary:(NSDictionary *)JSONDictionary error:(NSError **)error {
+	///类簇
 	if ([self.modelClass respondsToSelector:@selector(classForParsingJSONDictionary:)]) {
 		Class class = [self.modelClass classForParsingJSONDictionary:JSONDictionary];
 		if (class == nil) {
@@ -271,7 +299,6 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 			return nil;
 		}
-
 		if (class != self.modelClass) {
 			NSAssert([class conformsToProtocol:@protocol(MTLJSONSerializing)], @"Class %@ returned from +classForParsingJSONDictionary: does not conform to <MTLJSONSerializing>", class);
 
@@ -281,8 +308,16 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 		}
 	}
 
+	
 	NSMutableDictionary *dictionaryValue = [[NSMutableDictionary alloc] initWithCapacity:JSONDictionary.count];
 
+	//遍历所有属性key
+	//忽视JSONKeyPathsByPropertyKey之外的key
+	//得到propertyKey在json中映射的值
+	//忽视json中没有的键值
+	//用对应的transform转换为实际值 nil->NSNull
+	//上述步骤中的值放入dictionaryValue
+	//调用class的modelWithDictionary方法初始化model 也就是说JSONKeyPathsByPropertyKey中要把所有的属性写全
 	for (NSString *propertyKey in [self.modelClass propertyKeys]) {
 		id JSONKeyPaths = self.JSONKeyPathsByPropertyKey[propertyKey];
 
@@ -362,6 +397,16 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	return [model validate:error] ? model : nil;
 }
 
+///modelClass必须遵守MTLJSONSerializing协议
+///遍历所有属性 获取该属性的Transformer
+///1.modelClass的+<key>JSONTransformer方法
+///2.modelClass的+JSONTransformerForKey
+///3.1.1 adapterClass的<ClassName>JSONTransformer
+///3.1.2 adapterClass的+dictionaryTransformerWithModelClass
+///3.1.3 [NSValueTransformer mtl_validatingTransformerForClass]
+///3.2.1 BOOL? transformerForModelPropertiesOfObjCType
+///3.2.2 [NSValueTransformer mtl_validatingTransformerForClass]
+///如果还是nil 则放弃
 + (NSDictionary *)valueTransformersForModelClass:(Class)modelClass {
 	NSParameterAssert(modelClass != nil);
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLJSONSerializing)]);
@@ -400,13 +445,14 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 		NSValueTransformer *transformer = nil;
 
-		if (*(attributes->type) == *(@encode(id))) {
+		if (*(attributes->type) == *(@encode(id))) {//OC对象
 			Class propertyClass = attributes->objectClass;
 
+			
 			if (propertyClass != nil) {
+				///找对应的<ClassName>JSONTransformer
 				transformer = [self transformerForModelPropertiesOfClass:propertyClass];
 			}
-
 
 			// For user-defined MTLModel, try parse it with dictionaryTransformer.
 			if (nil == transformer && [propertyClass conformsToProtocol:@protocol(MTLJSONSerializing)]) {
@@ -424,6 +470,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	return result;
 }
 
+///返回对应class的adapter 并缓存在JSONAdaptersByModelClass中
 - (MTLJSONAdapter *)JSONAdapterForModelClass:(Class)modelClass error:(NSError **)error {
 	NSParameterAssert(modelClass != nil);
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLJSONSerializing)]);
@@ -443,10 +490,14 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	}
 }
 
+///返回哪些需要向字典转换的属性 可以在这里过滤不需要的
+///propertyKeys是JSONKeyPathsByPropertyKey方法中的所有keys
 - (NSSet *)serializablePropertyKeys:(NSSet *)propertyKeys forModel:(id<MTLJSONSerializing>)model {
 	return propertyKeys;
 }
 
+
+///找对应的<ClassName>JSONTransformer 并调用 返回调用结果
 + (NSValueTransformer *)transformerForModelPropertiesOfClass:(Class)modelClass {
 	NSParameterAssert(modelClass != nil);
 
@@ -460,6 +511,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 	return result;
 }
 
+///只有BOOL类型Transformer 其他返回nil
 + (NSValueTransformer *)transformerForModelPropertiesOfObjCType:(const char *)objCType {
 	NSParameterAssert(objCType != NULL);
 
@@ -474,6 +526,7 @@ NSString * const MTLJSONAdapterThrownExceptionErrorKey = @"MTLJSONAdapterThrownE
 
 @implementation MTLJSONAdapter (ValueTransformers)
 
+///NSDictionary->model reversible
 + (NSValueTransformer<MTLTransformerErrorHandling> *)dictionaryTransformerWithModelClass:(Class)modelClass {
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLModel)]);
 	NSParameterAssert([modelClass conformsToProtocol:@protocol(MTLJSONSerializing)]);

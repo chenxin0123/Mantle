@@ -1,4 +1,4 @@
-//
+//!
 //  MTLJSONAdapter.h
 //  Mantle
 //
